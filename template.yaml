@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  cloudsearch-backup
+Transform:
+  - AWS::Serverless-2016-10-31
+
+# TODO: replace environment variables
+Parameters:
+  BucketName:
+    Type: String
+    Description: "S3 Bucket name to backup and restore to and from"
+    Default: "tbd-cloudsearch-backup-us-east-1"
+  DocumentEndpoint:
+    Type: String
+    Description: "CloudSearch document endpoint"
+    Default: "https://doc-tbd-6gxmw3zneftgwvczjeigpqwe2f.us-east-1.cloudsearch.amazonaws.com"
+  OneShot:
+    Type: Number
+    Description: "If true, backups override. If false, backup names include datestamps"
+    Default: 0 # 0 = false
+    AllowedValues: [0, 1]
+  SingleFile:
+    Type: Number
+    Description: "If true, backups to a single file. If false, backup to a batch of files"
+    Default: 1 # 1 = true
+    AllowedValues: [0, 1]
+
+Resources:
+  # Backup a CloudSearch instance to S3
+  CloudSearchBackupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/cloudsearch-backup.backup
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      MemorySize: 512
+      Timeout: 600 # 10 minutes
+      EphemeralStorage:
+        Size: 10240 # 10GB index limit
+      Description: Backup a CloudSearch instance to S3
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonS3FullAccess
+        - CloudSearchFullAccess
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          DOCUMENT_ENDPOINT: !Ref DocumentEndpoint
+          REGION: !Ref AWS::Region
+          ONE_SHOT: !Ref OneShot
+          SINGLE_FILE: !Ref SingleFile
+
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON
